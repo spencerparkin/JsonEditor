@@ -1,0 +1,6 @@
+[submodule "ThirdParty/wxWidgets"]
+	path = ThirdParty/wxWidgets
+	url = https://github.com/wxWidgets/wxWidgets.git
+[submodule "ThirdParty/ParseParty"]
+	path = ThirdParty/ParseParty
+	url = https://github.com/spencerparkin/ParseParty.git
