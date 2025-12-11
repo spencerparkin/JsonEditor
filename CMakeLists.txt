@@ -16,6 +16,8 @@ set(ACHIEVEMENTS_TOOL_SOURCES
 	Source/Application.h
 	Source/Frame.cpp
 	Source/Frame.h
+	Source/JsonDataViewModel.cpp
+	Source/JsonDataViewModel.h
 )
 
 source_group("Source" TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${ACHIEVEMENTS_TOOL_SOURCES})
