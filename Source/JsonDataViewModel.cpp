@@ -87,7 +87,78 @@ ParseParty::JsonValue* JsonDataViewModel::GetJsonRootValue()
 {
 	JsonValue* jsonValue = static_cast<JsonValue*>(item.m_pItem);
 
-	return false;
+	switch (col)
+	{
+		case COL_NAME:
+		{
+			wxString newName = variant.GetString();
+
+			auto iter = this->metaDataMap.find((JsonValue*)jsonValue);
+			if (iter != this->metaDataMap.end())
+			{
+				JsonValueMetaData& metaData = iter->second;
+				
+				auto jsonObject = dynamic_cast<JsonObject*>(metaData.jsonParentValue);
+				if (jsonObject && jsonObject->GetValue(metaData.name) == jsonValue)
+				{
+					if (jsonObject->GetValue(newName.ToStdString()) == nullptr)
+					{
+						jsonObject->DeleteValue(metaData.name, false);
+						metaData.name = newName;
+						jsonObject->SetValue(metaData.name, jsonValue);
+						return true;
+					}
+				}
+			}
+
+			return false;
+		}
+		case COL_VALUE:
+		{
+			wxString newValue = variant.GetString();
+
+			auto jsonString = dynamic_cast<JsonString*>(jsonValue);
+			if (jsonString)
+			{
+				jsonString->SetValue(newValue.ToStdString());
+				return true;
+			}
+
+			auto jsonInt = dynamic_cast<JsonInt*>(jsonValue);
+			if (jsonInt)
+			{
+				long intValue = 0;
+				if (!newValue.ToLong(&intValue))
+					return false;
+
+				jsonInt->SetValue(intValue);
+				return true;
+			}
+
+			auto jsonBool = dynamic_cast<JsonBool*>(jsonValue);
+			if (jsonBool)
+			{
+				if (newValue.Upper() == wxT("TRUE"))
+				{
+					jsonBool->SetValue(true);
+					return true;
+				}
+				else if (newValue.Upper() == wxT("FALSE"))
+				{
+					jsonBool->SetValue(false);
+					return true;
+				}
+			}
+
+			return false;
+		}
+		case COL_TYPE:
+		{
+			return false;
+		}
+	}
+
+	return true;
 }
 
 /*virtual*/ wxDataViewItem JsonDataViewModel::GetParent(const wxDataViewItem& item) const

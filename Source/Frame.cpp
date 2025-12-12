@@ -16,6 +16,7 @@ Frame::Frame(const wxPoint& position, const wxSize& size) : wxFrame(nullptr, wxI
 
 	wxButton* saveButton = new wxButton(this, wxID_ANY, wxT("Save"));
 	saveButton->Bind(wxEVT_BUTTON, &Frame::OnSaveButtonPushed, this);
+	saveButton->SetToolTip("CTRL-click this button to save as some other file name.");
 
 	wxButton* loadFromClipboardButton = new wxButton(this, wxID_ANY, wxT("Load From Clipboard"));
 	loadFromClipboardButton->Bind(wxEVT_BUTTON, &Frame::OnLoadFromClipboardButtonPushed, this);
@@ -24,13 +25,14 @@ Frame::Frame(const wxPoint& position, const wxSize& size) : wxFrame(nullptr, wxI
 	saveToClipboardButton->Bind(wxEVT_BUTTON, &Frame::OnSaveToClipboardButtonPushed, this);
 
 	auto nameRenderer = new wxDataViewTextRenderer(wxDataViewTextRenderer::GetDefaultType(), wxDATAVIEW_CELL_EDITABLE, wxALIGN_LEFT);
-	auto typeRenderer = new wxDataViewTextRenderer(wxDataViewTextRenderer::GetDefaultType(), wxDATAVIEW_CELL_EDITABLE, wxALIGN_LEFT);
+	auto typeRenderer = new wxDataViewTextRenderer(wxDataViewTextRenderer::GetDefaultType(), wxDATAVIEW_CELL_INERT, wxALIGN_LEFT);
 	auto valueRenderer = new wxDataViewTextRenderer(wxDataViewTextRenderer::GetDefaultType(), wxDATAVIEW_CELL_EDITABLE, wxALIGN_LEFT);
 
 	auto nameColumn = new wxDataViewColumn(wxT("Name"), nameRenderer, COL_NAME, 250);
 	auto typeColumn = new wxDataViewColumn(wxT("Type"), typeRenderer, COL_TYPE, 150);
 	auto valueColumn = new wxDataViewColumn(wxT("Value"), valueRenderer, COL_VALUE, 250);
 
+	// STPTODO: Add context menu that can be used to insert, delete, move, rename, etc., etc., etc.
 	this->dataViewControl = new wxDataViewCtrl(this, wxID_ANY);
 	this->dataViewControl->AppendColumn(nameColumn);
 	this->dataViewControl->AppendColumn(typeColumn);
@@ -59,7 +61,7 @@ Frame::Frame(const wxPoint& position, const wxSize& size) : wxFrame(nullptr, wxI
 
 void Frame::OnLoadButtonPushed(wxCommandEvent& event)
 {
-	wxFileDialog fileDialog(this, wxT("Select JSON file to open."), wxEmptyString, wxEmptyString, wxT("Json Files (*.json)|*.json"), wxFD_FILE_MUST_EXIST);
+	wxFileDialog fileDialog(this, wxT("Select JSON file to open."), wxEmptyString, wxEmptyString, wxT("JSON Files (*.json)|*.json"), wxFD_OPEN | wxFD_FILE_MUST_EXIST);
 	if (fileDialog.ShowModal() != wxID_OK)
 		return;
 
@@ -96,6 +98,43 @@ void Frame::OnLoadButtonPushed(wxCommandEvent& event)
 
 void Frame::OnSaveButtonPushed(wxCommandEvent& event)
 {
+	JsonValue* jsonValue = this->dataViewModel->GetJsonRootValue();
+	if (!jsonValue)
+	{
+		wxMessageBox(wxT("No JSON loaded that can be saved."), wxT("Error!"), wxOK | wxICON_ERROR, this);
+		return;
+	}
+
+	if (this->filePath.length() == 0 || wxGetKeyState(WXK_CONTROL))
+	{
+		wxFileDialog fileDialog(this, wxT("Select JSON file save location."), wxEmptyString, wxEmptyString, wxT("JSON Files (*.json)|*.json"), wxFD_SAVE | wxFD_OVERWRITE_PROMPT);
+		if (fileDialog.ShowModal() != wxID_OK)
+			return;
+
+		this->filePath = fileDialog.GetPath();
+	}
+
+	std::string jsonText;
+	if (!jsonValue->PrintJson(jsonText))
+	{
+		wxMessageBox(wxT("Json print failed!?"), wxT("Error!"), wxOK | wxICON_ERROR, this);
+		return;
+	}
+
+	wxFile file;
+	if (!file.Open(this->filePath, wxFile::write))
+	{
+		wxMessageBox(wxString::Format(wxT("Failed to open file for writing: %s"), this->filePath.c_str()), wxT("Error!"), wxOK | wxICON_ERROR, this);
+		return;
+	}
+
+	if (!file.Write(wxString(jsonText)))
+	{
+		wxMessageBox(wxString::Format(wxT("Failed to write to file: %s"), this->filePath.c_str()), wxT("Error!"), wxOK | wxICON_ERROR, this);
+		return;
+	}
+
+	file.Close();
 }
 
 void Frame::OnLoadFromClipboardButtonPushed(wxCommandEvent& event)
@@ -110,7 +149,6 @@ void Frame::OnLoadFromClipboardButtonPushed(wxCommandEvent& event)
 	if (!wxTheClipboard->GetData(dataObject))
 	{
 		wxMessageBox(wxT("Failed to get text object from clipboard!"), wxT("Error!"), wxOK | wxICON_ERROR, this);
-		wxTheClipboard->Close();
 		return;
 	}
 
@@ -132,5 +170,33 @@ void Frame::OnLoadFromClipboardButtonPushed(wxCommandEvent& event)
 
 void Frame::OnSaveToClipboardButtonPushed(wxCommandEvent& event)
 {
+	JsonValue* jsonValue = this->dataViewModel->GetJsonRootValue();
+	if (!jsonValue)
+	{
+		wxMessageBox(wxT("No JSON loaded that can be saved."), wxT("Error!"), wxOK | wxICON_ERROR, this);
+		return;
+	}
 
+	std::string jsonText;
+	if (!jsonValue->PrintJson(jsonText))
+	{
+		wxMessageBox(wxT("Json print failed!?"), wxT("Error!"), wxOK | wxICON_ERROR, this);
+		return;
+	}
+
+	if (!wxTheClipboard->Open())
+	{
+		wxMessageBox(wxT("Failed to open clipboard!"), wxT("Error!"), wxOK | wxICON_ERROR, this);
+		return;
+	}
+
+	wxTextDataObject dataObject;
+	dataObject.SetText(wxString(jsonText));
+	if (!wxTheClipboard->SetData(&dataObject))
+	{
+		wxMessageBox(wxT("Failed to set text object to clipboard!"), wxT("Error!"), wxOK | wxICON_ERROR, this);
+		return;
+	}
+
+	wxTheClipboard->Close();
 }
