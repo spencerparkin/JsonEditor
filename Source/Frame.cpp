@@ -5,6 +5,7 @@
 #include <wx/filedlg.h>
 #include <wx/msgdlg.h>
 #include <wx/file.h>
+#include <wx/clipbrd.h>
 
 using namespace ParseParty;
 
@@ -15,6 +16,12 @@ Frame::Frame(const wxPoint& position, const wxSize& size) : wxFrame(nullptr, wxI
 
 	wxButton* saveButton = new wxButton(this, wxID_ANY, wxT("Save"));
 	saveButton->Bind(wxEVT_BUTTON, &Frame::OnSaveButtonPushed, this);
+
+	wxButton* loadFromClipboardButton = new wxButton(this, wxID_ANY, wxT("Load From Clipboard"));
+	loadFromClipboardButton->Bind(wxEVT_BUTTON, &Frame::OnLoadFromClipboardButtonPushed, this);
+
+	wxButton* saveToClipboardButton = new wxButton(this, wxID_ANY, wxT("Save To Clipboard"));
+	saveToClipboardButton->Bind(wxEVT_BUTTON, &Frame::OnSaveToClipboardButtonPushed, this);
 
 	auto nameRenderer = new wxDataViewTextRenderer(wxDataViewTextRenderer::GetDefaultType(), wxDATAVIEW_CELL_EDITABLE, wxALIGN_LEFT);
 	auto typeRenderer = new wxDataViewTextRenderer(wxDataViewTextRenderer::GetDefaultType(), wxDATAVIEW_CELL_EDITABLE, wxALIGN_LEFT);
@@ -35,6 +42,8 @@ Frame::Frame(const wxPoint& position, const wxSize& size) : wxFrame(nullptr, wxI
 	wxBoxSizer* buttonSizer = new wxBoxSizer(wxHORIZONTAL);
 	buttonSizer->Add(loadButton, 0, wxGROW);
 	buttonSizer->Add(saveButton, 0, wxGROW | wxLEFT, 5);
+	buttonSizer->Add(loadFromClipboardButton, 0, wxGROW | wxLEFT, 5);
+	buttonSizer->Add(saveToClipboardButton, 0, wxGROW | wxLEFT, 5);
 
 	wxBoxSizer* mainSizer = new wxBoxSizer(wxVERTICAL);
 	mainSizer->Add(buttonSizer, 0, wxGROW | wxALL, 5);
@@ -87,4 +96,41 @@ void Frame::OnLoadButtonPushed(wxCommandEvent& event)
 
 void Frame::OnSaveButtonPushed(wxCommandEvent& event)
 {
+}
+
+void Frame::OnLoadFromClipboardButtonPushed(wxCommandEvent& event)
+{
+	if (!wxTheClipboard->Open())
+	{
+		wxMessageBox(wxT("Failed to open clipboard!"), wxT("Error!"), wxOK | wxICON_ERROR, this);
+		return;
+	}
+
+	wxTextDataObject dataObject;
+	if (!wxTheClipboard->GetData(dataObject))
+	{
+		wxMessageBox(wxT("Failed to get text object from clipboard!"), wxT("Error!"), wxOK | wxICON_ERROR, this);
+		wxTheClipboard->Close();
+		return;
+	}
+
+	wxTheClipboard->Close();
+
+	wxString jsonText = dataObject.GetText();
+	std::string parseError;
+	JsonValue* jsonValue = JsonValue::ParseJson(jsonText.ToStdString(), parseError);
+	if (!jsonValue)
+	{
+		wxMessageBox(wxString::Format(wxT("Failed to parse JSON from clipboard.\n\nError: %s"), parseError.c_str()), wxT("Error!"), wxOK | wxICON_ERROR, this);
+		return;
+	}
+
+	this->dataViewModel->SetJsonRootValue(jsonValue);
+	this->dataViewModel->Cleared();
+	this->filePath = "";
+}
+
+void Frame::OnSaveToClipboardButtonPushed(wxCommandEvent& event)
+{
+
 }
