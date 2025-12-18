@@ -84,7 +84,7 @@ void Frame::OnLoadButtonPushed(wxCommandEvent& event)
 	file.Close();
 
 	std::string parseError;
-	JsonValue* jsonValue = JsonValue::ParseJson(jsonText.ToStdString(), parseError);
+	std::shared_ptr<JsonValue> jsonValue = JsonValue::ParseJson(jsonText.ToStdString(), parseError);
 	if (!jsonValue)
 	{
 		wxMessageBox(wxString::Format(wxT("Failed to parse json in file: %s\n\nError: %s"), tentativeFilePath.c_str(), parseError.c_str()), wxT("Error!"), wxOK | wxICON_ERROR, this);
@@ -98,7 +98,7 @@ void Frame::OnLoadButtonPushed(wxCommandEvent& event)
 
 void Frame::OnSaveButtonPushed(wxCommandEvent& event)
 {
-	JsonValue* jsonValue = this->dataViewModel->GetJsonRootValue();
+	JsonValue* jsonValue = this->dataViewModel->GetJsonRootValue().get();
 	if (!jsonValue)
 	{
 		wxMessageBox(wxT("No JSON loaded that can be saved."), wxT("Error!"), wxOK | wxICON_ERROR, this);
@@ -156,7 +156,7 @@ void Frame::OnLoadFromClipboardButtonPushed(wxCommandEvent& event)
 
 	wxString jsonText = dataObject.GetText();
 	std::string parseError;
-	JsonValue* jsonValue = JsonValue::ParseJson(jsonText.ToStdString(), parseError);
+	std::shared_ptr<JsonValue> jsonValue = JsonValue::ParseJson(jsonText.ToStdString(), parseError);
 	if (!jsonValue)
 	{
 		wxMessageBox(wxString::Format(wxT("Failed to parse JSON from clipboard.\n\nError: %s"), parseError.c_str()), wxT("Error!"), wxOK | wxICON_ERROR, this);
@@ -170,7 +170,7 @@ void Frame::OnLoadFromClipboardButtonPushed(wxCommandEvent& event)
 
 void Frame::OnSaveToClipboardButtonPushed(wxCommandEvent& event)
 {
-	JsonValue* jsonValue = this->dataViewModel->GetJsonRootValue();
+	JsonValue* jsonValue = this->dataViewModel->GetJsonRootValue().get();
 	if (!jsonValue)
 	{
 		wxMessageBox(wxT("No JSON loaded that can be saved."), wxT("Error!"), wxOK | wxICON_ERROR, this);

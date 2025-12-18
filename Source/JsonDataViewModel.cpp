@@ -5,22 +5,19 @@ using namespace ParseParty;
 
 JsonDataViewModel::JsonDataViewModel()
 {
-	this->jsonRootValue = nullptr;
 }
 
 /*virtual*/ JsonDataViewModel::~JsonDataViewModel()
 {
-	delete this->jsonRootValue;
 }
 
-void JsonDataViewModel::SetJsonRootValue(ParseParty::JsonValue* jsonRootValue)
+void JsonDataViewModel::SetJsonRootValue(std::shared_ptr<ParseParty::JsonValue> jsonRootValue)
 {
-	delete this->jsonRootValue;
 	this->jsonRootValue = jsonRootValue;
 	this->metaDataMap.clear();
 }
 
-ParseParty::JsonValue* JsonDataViewModel::GetJsonRootValue()
+std::shared_ptr<ParseParty::JsonValue> JsonDataViewModel::GetJsonRootValue()
 {
 	return this->jsonRootValue;
 }
@@ -98,14 +95,15 @@ ParseParty::JsonValue* JsonDataViewModel::GetJsonRootValue()
 			{
 				JsonValueMetaData& metaData = iter->second;
 				
-				auto jsonObject = dynamic_cast<JsonObject*>(metaData.jsonParentValue);
-				if (jsonObject && jsonObject->GetValue(metaData.name) == jsonValue)
+				std::shared_ptr<JsonValue> jsonParentValue = metaData.jsonParentValueWeakPtr.lock();
+
+				auto jsonObject = dynamic_cast<JsonObject*>(jsonParentValue.get());
+				if (jsonObject && jsonObject->GetValue(metaData.name).get() == jsonValue)
 				{
 					if (jsonObject->GetValue(newName.ToStdString()) == nullptr)
 					{
-						jsonObject->DeleteValue(metaData.name, false);
 						metaData.name = newName;
-						jsonObject->SetValue(metaData.name, jsonValue);
+						jsonObject->SetValue(metaData.name, jsonValue->shared_from_this());
 						return true;
 					}
 				}
@@ -165,6 +163,16 @@ ParseParty::JsonValue* JsonDataViewModel::GetJsonRootValue()
 {
 	wxDataViewItem parentItem;
 
+	JsonValue* jsonValue = static_cast<JsonValue*>(item.m_pItem);
+	auto iter = this->metaDataMap.find((JsonValue*)jsonValue);
+	if (iter != this->metaDataMap.end())
+	{
+		JsonValueMetaData& metaData = iter->second;
+		std::shared_ptr<JsonValue> jsonParentValue = metaData.jsonParentValueWeakPtr.lock();
+		if (jsonParentValue.get() != this->jsonRootValue.get())
+			parentItem.m_pItem = jsonParentValue.get();
+	}
+
 	return parentItem;
 }
 
@@ -173,7 +181,7 @@ ParseParty::JsonValue* JsonDataViewModel::GetJsonRootValue()
 	JsonValue* jsonValue = static_cast<JsonValue*>(item.m_pItem);
 
 	if (!jsonValue)
-		jsonValue = this->jsonRootValue;
+		jsonValue = this->jsonRootValue.get();
 
 	if (dynamic_cast<JsonObject*>(jsonValue) || dynamic_cast<JsonArray*>(jsonValue))
 		return true;
@@ -186,7 +194,7 @@ ParseParty::JsonValue* JsonDataViewModel::GetJsonRootValue()
 	JsonValue* jsonValue = static_cast<JsonValue*>(item.m_pItem);
 
 	if (!jsonValue)
-		jsonValue = this->jsonRootValue;
+		jsonValue = this->jsonRootValue.get();
 
 	JsonObject* jsonObject = dynamic_cast<JsonObject*>(jsonValue);
 	if (jsonObject)
@@ -194,12 +202,12 @@ ParseParty::JsonValue* JsonDataViewModel::GetJsonRootValue()
 		for (auto pair : *jsonObject)
 		{
 			JsonValueMetaData metaData;
-			metaData.jsonParentValue = jsonObject;
+			metaData.jsonParentValueWeakPtr = jsonObject->shared_from_this();
 			metaData.name = pair.first;
-			this->metaDataMap.insert(std::pair(pair.second, metaData));
+			this->metaDataMap.insert(std::pair(pair.second.get(), metaData));
 
 			wxDataViewItem childItem;
-			childItem.m_pItem = pair.second;
+			childItem.m_pItem = pair.second.get();
 			children.Add(childItem);
 		}
 
@@ -212,12 +220,12 @@ ParseParty::JsonValue* JsonDataViewModel::GetJsonRootValue()
 		for (unsigned int i = 0; i < jsonArray->GetSize(); i++)
 		{
 			JsonValueMetaData metaData;
-			metaData.jsonParentValue = jsonArray;
+			metaData.jsonParentValueWeakPtr = jsonArray->shared_from_this();
 			metaData.name = std::format("{}", i);
-			this->metaDataMap.insert(std::pair(jsonArray->GetValue(i), metaData));
+			this->metaDataMap.insert(std::pair(jsonArray->GetValue(i).get(), metaData));
 
 			wxDataViewItem childItem;
-			childItem.m_pItem = jsonArray->GetValue(i);
+			childItem.m_pItem = jsonArray->GetValue(i).get();
 			children.Add(childItem);
 		}
 

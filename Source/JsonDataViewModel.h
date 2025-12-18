@@ -18,8 +18,8 @@ public:
 	JsonDataViewModel();
 	virtual ~JsonDataViewModel();
 
-	void SetJsonRootValue(ParseParty::JsonValue* jsonRootValue);
-	ParseParty::JsonValue* GetJsonRootValue();
+	void SetJsonRootValue(std::shared_ptr<ParseParty::JsonValue> jsonRootValue);
+	std::shared_ptr<ParseParty::JsonValue> GetJsonRootValue();
 
 	virtual void GetValue(wxVariant& variant, const wxDataViewItem& item, unsigned int col) const override;
 	virtual bool SetValue(const wxVariant& variant, const wxDataViewItem& item, unsigned int col) override;
@@ -32,9 +32,9 @@ private:
 	struct JsonValueMetaData
 	{
 		std::string name;
-		ParseParty::JsonValue* jsonParentValue;
+		std::weak_ptr<ParseParty::JsonValue> jsonParentValueWeakPtr;
 	};
 	
 	mutable std::unordered_map<ParseParty::JsonValue*, JsonValueMetaData> metaDataMap;
-	ParseParty::JsonValue* jsonRootValue;
+	std::shared_ptr<ParseParty::JsonValue> jsonRootValue;
 };
