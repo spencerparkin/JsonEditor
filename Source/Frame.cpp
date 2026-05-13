@@ -190,9 +190,9 @@ void Frame::OnSaveToClipboardButtonPushed(wxCommandEvent& event)
 		return;
 	}
 
-	wxTextDataObject dataObject;
-	dataObject.SetText(wxString(jsonText));
-	if (!wxTheClipboard->SetData(&dataObject))
+	wxTextDataObject* dataObject = new wxTextDataObject();
+	dataObject->SetText(wxString(jsonText));
+	if (!wxTheClipboard->SetData(dataObject))
 	{
 		wxMessageBox(wxT("Failed to set text object to clipboard!"), wxT("Error!"), wxOK | wxICON_ERROR, this);
 		return;
