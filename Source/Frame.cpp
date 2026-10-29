@@ -53,6 +53,17 @@ Frame::Frame(const wxPoint& position, const wxSize& size) : wxFrame(nullptr, wxI
 	mainSizer->Add(this->dataViewControl, 1, wxGROW | wxLEFT | wxRIGHT | wxBOTTOM, 5);
 
 	this->SetSizer(mainSizer);
+
+	int pasteCommandId = wxWindow::NewControlId();
+	int copyCommandId = wxWindow::NewControlId();
+
+	this->Bind(wxEVT_MENU, &Frame::OnLoadFromClipboardButtonPushed, this, pasteCommandId);
+	this->Bind(wxEVT_MENU, &Frame::OnSaveToClipboardButtonPushed, this, copyCommandId);
+
+	wxAcceleratorEntry entryArray[2];
+	entryArray[0].Set(wxACCEL_CTRL, (int)'V', pasteCommandId);
+	entryArray[1].Set(wxACCEL_CTRL, (int)'C', copyCommandId);
+	this->SetAcceleratorTable(wxAcceleratorTable(sizeof(entryArray) / sizeof(wxAcceleratorEntry), entryArray));
 }
 
 /*virtual*/ Frame::~Frame()
@@ -79,6 +90,11 @@ void Frame::OnContextMenu(wxDataViewEvent& event)
 
 	if (this->dataViewModel->IsContainer(contextItem))
 	{
+		if (contextMenu.GetMenuItemCount() > 0)
+		{
+			contextMenu.AppendSeparator();
+		}
+
 		wxMenuItem* menuItem = new wxMenuItem(&contextMenu, wxID_ANY, "Add");
 		contextMenu.Append(menuItem);
 		this->Bind(wxEVT_MENU, [this, contextItem](wxCommandEvent& event) -> void
