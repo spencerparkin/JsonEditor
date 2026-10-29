@@ -6,6 +6,7 @@
 #include <wx/msgdlg.h>
 #include <wx/file.h>
 #include <wx/clipbrd.h>
+#include <wx/menu.h>
 
 using namespace ParseParty;
 
@@ -32,11 +33,11 @@ Frame::Frame(const wxPoint& position, const wxSize& size) : wxFrame(nullptr, wxI
 	auto typeColumn = new wxDataViewColumn(wxT("Type"), typeRenderer, COL_TYPE, 150);
 	auto valueColumn = new wxDataViewColumn(wxT("Value"), valueRenderer, COL_VALUE, 250);
 
-	// STPTODO: Add context menu that can be used to insert, delete, move, rename, etc., etc., etc.
 	this->dataViewControl = new wxDataViewCtrl(this, wxID_ANY);
 	this->dataViewControl->AppendColumn(nameColumn);
 	this->dataViewControl->AppendColumn(typeColumn);
 	this->dataViewControl->AppendColumn(valueColumn);
+	this->dataViewControl->Bind(wxEVT_DATAVIEW_ITEM_CONTEXT_MENU, &Frame::OnContextMenu, this);
 
 	this->dataViewModel = new JsonDataViewModel();
 	this->dataViewControl->AssociateModel(this->dataViewModel);
@@ -57,6 +58,52 @@ Frame::Frame(const wxPoint& position, const wxSize& size) : wxFrame(nullptr, wxI
 /*virtual*/ Frame::~Frame()
 {
 	this->dataViewModel->DecRef();
+}
+
+void Frame::OnContextMenu(wxDataViewEvent& event)
+{
+	wxMenu contextMenu;
+
+	wxDataViewItem contextItem = event.GetItem();
+	wxDataViewItem parentItem = this->dataViewModel->GetParent(contextItem);
+
+	if (this->dataViewModel->IsContainer(parentItem))
+	{
+		wxMenuItem* menuItem = new wxMenuItem(&contextMenu, wxID_ANY, "Delete");
+		contextMenu.Append(menuItem);
+		this->Bind(wxEVT_MENU, [this, contextItem](wxCommandEvent& event) -> void
+			{
+				this->OnContextMenu_DeleteItem(event, contextItem);
+			}, menuItem->GetId());
+	}
+
+	if (this->dataViewModel->IsContainer(contextItem))
+	{
+		wxMenuItem* menuItem = new wxMenuItem(&contextMenu, wxID_ANY, "Add");
+		contextMenu.Append(menuItem);
+		this->Bind(wxEVT_MENU, [this, contextItem](wxCommandEvent& event) -> void
+			{
+				this->OnContextMenu_AddItem(event, contextItem);
+			}, menuItem->GetId());
+	}
+
+	if (contextMenu.GetMenuItemCount() > 0)
+	{
+		this->PopupMenu(&contextMenu);
+	}
+}
+
+void Frame::OnContextMenu_DeleteItem(wxCommandEvent& event, wxDataViewItem contextItem)
+{
+	if (this->dataViewModel->DeleteItem(contextItem))
+	{
+		this->dataViewControl->Refresh();
+	}
+}
+
+void Frame::OnContextMenu_AddItem(wxCommandEvent& event, wxDataViewItem contextItem)
+{
+	// STPTODO: Write this.
 }
 
 void Frame::OnLoadButtonPushed(wxCommandEvent& event)

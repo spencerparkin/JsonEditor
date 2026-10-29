@@ -18,6 +18,9 @@ private:
 	void OnSaveButtonPushed(wxCommandEvent& event);
 	void OnLoadFromClipboardButtonPushed(wxCommandEvent& event);
 	void OnSaveToClipboardButtonPushed(wxCommandEvent& event);
+	void OnContextMenu(wxDataViewEvent& event);
+	void OnContextMenu_DeleteItem(wxCommandEvent& event, wxDataViewItem contextItem);
+	void OnContextMenu_AddItem(wxCommandEvent& event, wxDataViewItem contextItem);
 
 	wxDataViewCtrl* dataViewControl;
 	JsonDataViewModel* dataViewModel;

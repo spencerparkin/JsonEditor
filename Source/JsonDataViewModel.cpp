@@ -239,3 +239,45 @@ std::shared_ptr<ParseParty::JsonValue> JsonDataViewModel::GetJsonRootValue()
 {
 	return true;
 }
+
+bool JsonDataViewModel::DeleteItem(const wxDataViewItem& item)
+{
+	auto jsonValue = static_cast<JsonValue*>(item.m_pItem);
+
+	auto iter = this->metaDataMap.find(jsonValue);
+	if (iter == this->metaDataMap.end())
+		return false;
+
+	const JsonValueMetaData& metaData = iter->second;
+
+	wxDataViewItem parentItem = this->GetParent(item);
+	if (!parentItem.m_pItem)
+		return false;
+
+	auto jsonParentValue = static_cast<JsonValue*>(parentItem.m_pItem);
+
+	auto jsonParentObject = dynamic_cast<JsonObject*>(jsonParentValue);
+	if (jsonParentObject)
+	{
+		if (!jsonParentObject->DeleteValue(metaData.name))
+			return false;
+	
+		this->metaDataMap.erase(jsonValue);
+		this->ItemDeleted(parentItem, item);
+	}
+
+	auto jsonParentArray = dynamic_cast<JsonArray*>(jsonParentValue);
+	if (jsonParentArray)
+	{
+		unsigned int i = ::atoi(metaData.name.c_str());
+		if (!jsonParentArray->RemoveValue(i))
+			return false;
+
+		// We have to be more drastic here, because we need to
+		// re-index a lot of meta-data, potentially.
+		this->metaDataMap.clear();
+		this->Cleared();
+	}
+	
+	return true;
+}

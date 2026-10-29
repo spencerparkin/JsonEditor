@@ -28,6 +28,8 @@ public:
 	virtual unsigned int GetChildren(const wxDataViewItem& item, wxDataViewItemArray& children) const override;
 	virtual bool HasContainerColumns(const wxDataViewItem& item) const override;
 
+	bool DeleteItem(const wxDataViewItem& item);
+
 private:
 	struct JsonValueMetaData
 	{
